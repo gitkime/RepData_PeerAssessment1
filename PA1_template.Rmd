@@ -1,20 +1,253 @@
 # Reproducible Research: Peer Assessment 1
+Author :    just Me
 
+```{r cretime,echo=FALSE}
+time <- format(Sys.time(), "%a %b %d %X %Y")
+```
+This Document was created on `r time`.
+
+# Intention:
+Solve the question for the 
+Reproducible Research Peer Assessment 1 to get a cousera certificate.
+
+# Introduction
+
+It is now possible to collect a large amount of data about personal movement using activity monitoring devices such as a [Fitbit](http://www.fitbit.com), [Nike Fuelband](http://www.nike.com/us/en_us/c/nikeplus-fuelband), or[Jawbone Up](https://jawbone.com/up). These type of devices are part of the "quantified self" movement -- a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. But these data remain under-utilized both because the raw data are hard to obtain and there is a lack of statistical methods and software for processing and interpreting the data.
 
 ## Loading and preprocessing the data
+The orginal raw-data which I downloaded from the GITHUB repository from Roger Peng.
+
+https://github.com/rdpeng/RepData_PeerAssessment1
+on the monday the 07 July 2014.
+
+```{r load_data}
+# read rawdata
+rdata <- read.csv("./rawdata/activity.csv",sep=",")
+#names 
+names(rdata)
+# show header ( 3 rows)
+head(rdata,n=3)
+# summary rdata
+summary(rdata)
+```
+After I inspect the raw-data us above I did some Processing on the raw-data to create useful data formats.
+1. Copy radata to tidydata.
+2. Convert the Column date in as.Date format
+3. Build a POSIXct dataframe from the date and interval columns, so i can use POSIX function.
+
+```{r convert_date}
+# convert date in R convertible Date-format
+tidy_data <- as.data.frame(rdata)
+tidy_data$date <- as.Date(as.character(tidy_data$date))
+## as date and time
+
+tidy_date1 <- as.character(paste(tidy_data$date,sprintf("%04d",tidy_data$interval)))
+xdate <- strftime(tidy_date1,format="%y-%m-%d %H:%M")
+xdate <- as.POSIXct(xdate)
+head(xdate)
+```
+
+# What is mean total number of steps taken per day?
+
+There are NA values in the tidy-dataset, but for this questions I ignored the missing values in
+the dataset.
+
+## Make a histogram of the total number of steps taken each day.
+I count the sum of step per each day and plot a histogram.
+Therefor i use the library(ggplot2)
+The output figure I saves in the directory ./figures
+
+```{r sum_pday}
+sum_pday <- aggregate(cbind(steps) ~ date, tidy_data, sum,na.rm=TRUE)
+head(sum_pday,n=3)
+```
+
+```{r histogram_1,fig.height=4,echo=FALSE}
+#plot histogramm
+#install packages  ggplot2
+#load lib ggplot2
+#install.packages(ggplot2)
+library(ggplot2)
+# Output png 
+png(file="./figures/hist_01.png")
+par(mar=c(5,4,1,1),las=1)
+a <- ggplot(sum_pday, aes(x = date, y = steps))
+b <- a + geom_bar(stat = "identity", position = "stack",colour="lightgreen")
+c <- b + ggtitle("Histogram of total Number of steps per day")
+print(c)
+# close plot
+dev.off()
+print(c)
+```
+
+## Mean and Median
+Calculate and report the **mean** and **median** total number of steps taken per day
+
+### Mean
+```{r mean_pday}
+# mean per day
+mean_pday <- aggregate(cbind(steps) ~ date, tidy_data, mean,na.rm=F)
+head(mean_pday,n=3)
+```
+### Median
+```{r median_allday}
+median_alldays <- median(mean_pday$steps)
+median_alldays
+```
+
+### What is the average daily activity pattern?
+
+Make a time series plot (i.e. `type = "l"`) of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis)
+mean per 5 minute interval**
+```{r mean_p_interval}
+# q2 mean per interval
+mean_pint <- aggregate(cbind(steps) ~ interval, tidy_data, mean,na.rm=F)
+head(mean_pint,n=3)
+```
 
 
+```{r timeseries ,fig.height=4,echo=FALSE}
+par(mar=c(5,4,1,1),las=1)
+# Output png 
+png(file="./figures/mean_pint_02.png")
+plot(mean_pint,type="l",main="Mean per 5 minutes interval")
+# close plot
+dev.off()
+plot(mean_pint,type="l",main="Mean per 5 minutes interval")
+```
 
-## What is mean total number of steps taken per day?
 
+## Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
 
+The maximun of steps in 5 minute interval
+```{r max_steps}
+# max step in all steps
+xmax <-grep(max(tidy_data$steps, na.rm = T), tidy_data$steps)
+tidy_data[xmax:xmax,]
+```
 
-## What is the average daily activity pattern?
+# Imputing missing values
 
+Calculate and report the total number of missing   values in the dataset (i.e. the total number of rows with `NA`s)
 
+```{r NA_amount}
+# max na in dataset
+sum(is.na(tidy_data$steps))
 
-## Imputing missing values
+```
+# Strategy for filling in all of the missing values   in the dataset. 
 
+## Solution:
+Copy tidy_data set to new dataset called tidy_data_nNa
+I will use the is.na function to fix out which value is NA, count with the mean funtion the mean of the column steps and change NA value with the mean value.
+I have to use na.rm= TRUE for the mean counting because otherwise the mean would NA.
 
+Create a new dataset that is equal to the original dataset but with the missing data filled in.
+
+```{r NA_fill}
+# q3-3
+tidy_data_nNa <- tidy_data
+tidy_data_nNa$steps[is.na(tidy_data_nNa$steps)] <- mean(tidy_data_nNa$steps, na.rm = TRUE)
+# str 
+str(tidy_data_nNa)
+# summary ne data.frame tidy_data_nNa
+summary(tidy_data_nNa)
+# show head of tidy_data_nNa
+head(tidy_data_nNa)
+```
+## Histogram
+Make a histogram of the total number of steps taken each day and Calculate and report the **mean** and **median** total number of steps taken per day.
+
+### Do these values differ from the estimates from the first part of the assignment?
+Yes, days with NA in Column steps are not countered, but in the dataset where the NA filled they are.
+
+## What is the impact of imputing missing data on the estimates of the total daily number of steps?
+The impact of imputing missing data with the mean value is that the sum per day is much higher. Now you can also see, that there are some days with zero measurements.
+
+## Compare dataset with and without NA's
+```{r compare}
+sum_pday_nNa <- aggregate(cbind(tidy_data_nNa$steps)~ tidy_data_nNa$date,tidy_data_nNa, sum,na.rm=TRUE)
+sum_pday <- aggregate(cbind(steps) ~ date, tidy_data, sum,na.rm=TRUE)
+head(sum_pday)
+head(sum_pday_nNa)
+```
+## Str and summary from dataset with none NA's
+
+```{r mean_nNa}
+# q3-4
+str(sum_pday_nNa)
+summary(sum_pday_nNa)
+```
+## Histogram with none Na in dataset
+```{r  histogram_nNa ,fig.height=4,echo=FALSE}
+par(mar=c(5,4,1,1),las=1)
+#plot histogramm
+#load lib ggplot2
+library(ggplot2)
+# Output png 
+png(file="./figures/hist_02.png")
+a <- ggplot(sum_pday_nNa, aes(x = tidy_data_nNa$interval, y = tidy_data_nNa$steps))
+b <- a + geom_bar(stat = "identity", position = "stack",colour="lightgreen")
+c <- b + ggtitle("Histogram of total Number of steps per day in not Na dataset")
+d <-  c + xlab("Interval")
+e <-  d + ylab("Steps")
+print(e) 
+# close plot
+dev.off()
+print(e)
+```
+## Calculate and report the mean and median
+
+Total number of steps taken per day
+
+### Mean of all step with no NA
+```{r mean_pday_nNa}
+mean_pday_nNa <- aggregate(cbind(steps) ~ date, tidy_data_nNa, mean,na.rm=F)
+head(mean_pday_nNa)
+```
+### Median of all step with no NA**
+```{r median_nNa}
+median_alldays_nNa <- median(mean_pday_nNa$steps)
+median_alldays_nNa
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+I use the filled NA dataset.
+I create a new factor variable in the dataset with two levels -- "weekday" and "weekend" indicating whether a given date is a weekday or weekend day.
+
+## Answer:
+Yes there differences in activity pattern between weekdays and weekend. There are more max values during the weekdays. During the weekdays is more activity, but at the weekend there is more constance in activity. 
+```{r weekdays}
+#  weekday and weekend
+week <- as.factor(weekdays(as.Date(as.character(xdate))) %in% c('Sunday','Saturday'))
+table(week)
+levels ( week ) <- c ( "weekday" , "weekend" )
+```
+```{r week_mean}
+mean_pweek <- aggregate(cbind(steps) ~ week, tidy_data_nNa, mean,na.rm=F)
+mean_pweek
+```
+### sum per weekday and weekend 
+```{r week_sum}
+sum_pweek <- aggregate(cbind(steps) ~ week, tidy_data_nNa, sum,na.rm=F)
+sum_pweek
+```
+## xyplot type line steps per weekdays and weekend
+
+```{r xyplot_week ,fig.height=4,echo=FALSE}
+par(mar=c(5,4,1,1),las=1)
+png(file="./figures/xyplot_01.png")
+##library(lattice)
+library(lattice)
+#plot weekday and weekend
+xyplot(tidy_data_nNa$steps ~ tidy_data$date | week,type="l",xlab="Dates",ylab="Steps",main="Steps on weekday and weekend",layout=c(2,1))
+# close plot
+dev.off()
+xyplot(tidy_data_nNa$steps ~ tidy_data$date | week,type="l",xlab="Dates",ylab="Steps",main="Steps on weekday and weekend",layout=c(2,1))
+```
+# Resent conclusions 
+
+After I finished the work with data about personal
+movement using activity monitoring devices, I could get interesting result, that you can see above in the workbench. It is very interesting to count and visualize the personal monitoring dataset. For everyone it would be interesting to know more about his own activity. I will suggest that theses small a personal activity monitoring device, will have a big future.
+
